@@ -1,12 +1,9 @@
-
 # -*- coding: utf-8 -*-
 from __future__ import annotations
-import pandas as pd
-import numpy as np
-import re, unicodedata, difflib
+import pandas as pd, numpy as np, re, unicodedata, difflib
 from datetime import datetime
 
-TEMPLATE_COLS = ['Faz', 'Column1', 'Katılımcı', 'Devamlılık', 'Tarih', 'Test Alanı', 'Cihaz OS', 'Uygulama', 'wifi/lte', 'Versiyon', 'Puan', 'Bip Yorum', 'Whatsapp yorum', 'Telegram Yorum', 'cihaz']
+TEMPLATE_SHEET = "Fonksiyonlar Data"
 
 TEST_ALANI_MAP = {
     "txt": "IM - 1-1 txt mesaj",
@@ -17,6 +14,8 @@ TEST_ALANI_MAP = {
     "voip": "Voip - 1-1 Görüntülü görüşme",
 }
 APPS = [("Bip","bip"), ("Whatsapp","whatsapp"), ("Telegram","telegram")]
+
+TARGET_COLS = ['Faz','Column1','Katılımcı','Devamlılık','Tarih','Test Alanı','Cihaz OS','Uygulama','wifi/lte','Versiyon','Puan','Bip Yorum','Whatsapp yorum','Telegram Yorum','cihaz']
 
 def normalize_tr(s: str) -> str:
     if s is None:
@@ -37,7 +36,7 @@ def best_match(col_name, candidates):
     hit = matches[0]
     return candidates[cand_norm.index(hit)]
 
-def transform_exact(df_raw: pd.DataFrame, faz_value: str|None=None) -> pd.DataFrame:
+def transform(df_raw: pd.DataFrame, faz_value: str|None=None) -> pd.DataFrame:
     src_cols = list(df_raw.columns)
     col_adsoyad = best_match("Adınız, soyadınız", src_cols) or best_match("Ad Soyad", src_cols)
     col_tarih = best_match("tarih", src_cols) or best_match("Zaman damgası", src_cols)
@@ -113,8 +112,8 @@ def transform_exact(df_raw: pd.DataFrame, faz_value: str|None=None) -> pd.DataFr
             })
 
     df = pd.DataFrame(rows)
-    for c in TEMPLATE_COLS:
+    for c in TARGET_COLS:
         if c not in df.columns:
             df[c] = None
-    df = df[TEMPLATE_COLS]
+    df = df[TARGET_COLS]
     return df

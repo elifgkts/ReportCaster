@@ -1,15 +1,12 @@
-# Rapor Tablosu Oluşturucu
+# Rapor Otomasyonu — yanitlar.xlsx → rapor.xlsx
 
-**Amaç:** `yanitlar.xlsx` dosyasını alır, `rapor.xlsx` içindeki **Fonksiyonlar Data** tablosunu **birebir kolonlarla** ve **Excel Table (filtreli)** oluşturur.
+Uygulama, yanitlar.xlsx içindeki tüm sekmeleri analiz eder; Fonksiyonlar Data ve UploadDownload Data tablolarını üretir. 
+İki çıktı sunar:
+1) Taşınabilir Excel: xlsxwriter ile, her sayfada Excel Table (filtreli)
+2) Şablona Yazılmış Excel: rapor.xlsx şablonuna yazıp tablo aralıklarını büyütür; filtre/biçimler korunur.
 
-## Çalıştırma
-```bash
+Kurulum:
 pip install -r requirements.txt
 streamlit run app.py
-```
 
-## Notlar
-- Çıktı sayfası adı: **Fonksiyonlar Data**
-- Oluşturulan Excel Table adı: **FonksiyonlarData** (filtreler aktif)
-- Devamlılık = puan ≥ eşiğe **OK**, aksi **NOK** (varsayılan eşik: 4)
-- Test Alanı haritası ve fuzzy sütun eşleşmeleri `transformer.py` içindedir.
+Not: Şablonda pivot/slicer varsa, veri güncelledikten sonra Excel içinde “Yenile” yapmanız gerekebilir.

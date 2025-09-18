@@ -28,11 +28,9 @@ out_df = transform(df_raw, faz_value=faz_value)
 st.subheader("Dönüştürülmüş veri (önizleme)")
 st.dataframe(out_df.head(50), use_container_width=True)
 
-# 1) Programatik dashboard (xlsxwriter)
+# 1) Programatik dashboard (xlsxwriter) — ŞABLONSUZ, her ortamda çalışır
 st.markdown("### 📦 Dashboard'lu Excel (şablonsuz)")
-from io import BytesIO
 import numpy as np
-
 buffer_dash = BytesIO()
 with pd.ExcelWriter(buffer_dash, engine="xlsxwriter") as writer:
     out_df.to_excel(writer, index=False, sheet_name="Fonksiyonlar Data")
@@ -53,7 +51,6 @@ with pd.ExcelWriter(buffer_dash, engine="xlsxwriter") as writer:
     title = wb.add_format({"bold": True, "font_size": 16})
     ws_dash.write(0, 0, "Rapor Özeti", title)
 
-    # Chart 1
     chart1 = wb.add_chart({"type": "line"})
     n1 = len(agg1)
     if n1 > 0:
@@ -65,7 +62,6 @@ with pd.ExcelWriter(buffer_dash, engine="xlsxwriter") as writer:
         chart1.set_title({"name": "Aylık Ortalama Puan"})
         ws_dash.insert_chart(2, 0, chart1, {"x_scale": 1.2, "y_scale": 1.2})
 
-    # Chart 2
     chart2 = wb.add_chart({"type": "column"})
     n2 = len(agg2)
     if n2 > 0:
@@ -77,7 +73,6 @@ with pd.ExcelWriter(buffer_dash, engine="xlsxwriter") as writer:
         chart2.set_title({"name": "Uygulama Bazlı Ortalama Puan"})
         ws_dash.insert_chart(20, 0, chart2, {"x_scale": 1.2, "y_scale": 1.2})
 
-    # Chart 3
     chart3 = wb.add_chart({"type": "bar"})
     n3 = len(agg3)
     if n3 > 0:
@@ -92,13 +87,13 @@ with pd.ExcelWriter(buffer_dash, engine="xlsxwriter") as writer:
 buffer_dash.seek(0)
 st.download_button("⬇️ Dashboard'lu Excel (indir)", data=buffer_dash, file_name="rapor_dashboard.xlsx")
 
-# 2) Birebir şablon yaz (deneysel)
+# 2) Birebir şablona yaz (deneysel) — pivot/slicer’lı şablonlarda bazen sorun olabilir
 st.markdown("### 🧩 Birebir Şablon Yaz (deneysel)")
 if tpl_file:
     try:
         tpl_bytes = tpl_file.read()
         from openpyxl import load_workbook
-        wb = load_workbook(BytesIO(tpl_bytes), keep_links=False)
+        wb = load_workbook(BytesIO(tpl_bytes), keep_links=False)  # pivot/slicer hatalarını çoğunlukla by-pass eder
         wsname = "Fonksiyonlar Data"
         if wsname not in wb.sheetnames:
             st.error("Şablonda 'Fonksiyonlar Data' sayfası yok.")

@@ -241,3 +241,16 @@ def build_from_yanitlar(xls: pd.ExcelFile, faz_value: str = "Faz 6",
         up_df = up_df[UPDOWN_COLS_DEFAULT]
 
     return fonk_df, up_df
+# --- geriye dönük uyumluluk için alias ---
+def transform(df_raw, faz_value=None, devamlilik_threshold=4):
+    """
+    reportcaster/streamlit_app.py bu imzayı bekliyor.
+    Girdi: df_raw (DataFrame)
+    Çıktı: Fonksiyonlar Data (DataFrame)
+    """
+    try:
+        # Eğer dosyanda bu fonksiyon varsa onu kullan:
+        return transform_yanitlar_to_table(df_raw, faz_value=faz_value, devamlilik_threshold=devamlilik_threshold)
+    except NameError:
+        # Alternatif isimli fonksiyonun varsa onu çağır (ör: _core_transform, build_* vs.)
+        return _core_transform(df_raw, faz_value=faz_value, devamlilik_threshold=devamlilik_threshold)

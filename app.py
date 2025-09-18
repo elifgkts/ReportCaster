@@ -1,54 +1,68 @@
 # -*- coding: utf-8 -*-
 import streamlit as st, pandas as pd
 from io import BytesIO
-from transformer import transform_yanitlar_to_table
+from transformer import build_from_yanitlar
+from writer import write_into_template, write_portable_with_tables
 
-st.set_page_config(page_title="Rapor Tablosu Oluşturucu", layout="wide")
-st.title("📊 Rapor Tablosu Oluşturucu")
-st.caption("yanitlar.xlsx → rapor.xlsx içindeki 'Fonksiyonlar Data' tablosunu **%100 aynı kolonlarla** ve **Excel Table (filtreli)** oluşturur.")
+st.set_page_config(page_title="Rapor Otomasyonu", layout="wide")
+st.title("📊 Rapor Otomasyonu — yanitlar.xlsx → rapor.xlsx benzeri çıktı")
 
 with st.sidebar:
     st.header("Ayarlar")
     faz_value = st.text_input("Faz", value="Faz 6")
-    devam_esik = st.number_input("Devamlılık eşiği (OK için minimum puan)", min_value=1, max_value=5, value=4, step=1)
+    esik = st.number_input("Devamlılık eşiği (OK için min puan)", 1, 5, 4, 1)
 
-file_up = st.file_uploader("yanitlar.xlsx dosyasını yükleyin", type=["xlsx"])
+st.markdown("**1) yanitlar.xlsx** ve **2) rapor.xlsx (şablon)** dosyalarını yükleyin.")
+col1, col2 = st.columns(2)
+with col1:
+    yan_file = st.file_uploader("yanitlar.xlsx", type=["xlsx"], key="yan")
+with col2:
+    tpl_file = st.file_uploader("rapor.xlsx (şablon)", type=["xlsx"], key="tpl")
 
-if not file_up:
-    st.info("Başlamak için yanitlar.xlsx yükleyin.")
+if not yan_file:
+    st.info("Önce yanitlar.xlsx dosyasını yükleyin.")
     st.stop()
 
-# Kaynak oku
-xls = pd.ExcelFile(file_up)
-df_raw = pd.read_excel(xls, sheet_name=xls.sheet_names[0])
+xls = pd.ExcelFile(yan_file)
 
-st.subheader("Kaynak önizleme (ilk 20 satır)")
-st.dataframe(df_raw.head(20), use_container_width=True)
+# Şablondan kolon başlıklarını almak → birebir sıra/isim garantisi
+fonk_cols = up_cols = None
+if tpl_file:
+    try:
+        fonk_cols = list(pd.read_excel(tpl_file, sheet_name="Fonksiyonlar Data").columns)
+        up_cols   = list(pd.read_excel(tpl_file, sheet_name="UploadDownload Data").columns)
+    except Exception as e:
+        st.warning(f"Şablondan kolon başlıkları alınamadı: {e}")
 
-# Dönüştür
-out_df = transform_yanitlar_to_table(df_raw, faz_value=faz_value, devamlilik_threshold=devam_esik)
+fonk_df, up_df = build_from_yanitlar(
+    xls, faz_value=faz_value, devamlilik_threshold=int(esik),
+    fonk_cols=fonk_cols, updown_cols=up_cols
+)
 
-st.subheader("Çıktı önizleme (ilk 50 satır)")
-st.dataframe(out_df.head(50), use_container_width=True)
+st.subheader("Fonksiyonlar Data (örnek 50)")
+st.dataframe(fonk_df.head(50), use_container_width=True)
+st.subheader("UploadDownload Data (örnek 50)")
+st.dataframe(up_df.head(50), use_container_width=True)
 
-# Excel Table (filtreli) olarak indir
-from xlsxwriter.utility import xl_range
-buffer = BytesIO()
-with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
-    sheet_name = "Fonksiyonlar Data"
-    out_df.to_excel(writer, sheet_name=sheet_name, index=False)
-    wb = writer.book
-    ws = writer.sheets[sheet_name]
+st.markdown("---")
+st.markdown("### 📥 Çıktı")
 
-    nrows, ncols = out_df.shape
-    # add_table uses inclusive coordinates (0-based)
-    ws.add_table(0, 0, nrows, ncols-1, {
-        "name": "FonksiyonlarData",
-        "columns": [{"header": c} for c in out_df.columns],
-        "autofilter": True
-    })
-
-buffer.seek(0)
-st.download_button("⬇️ Excel'i indir (filtreli tablo)", data=buffer,
-                   file_name="rapor_tablosu.xlsx",
+# 1) Taşınabilir Excel (tablolar & filtreler)
+port_bytes = write_portable_with_tables(fonk_df, up_df)
+st.download_button("⬇️ Taşınabilir Excel (tablolar & filtreler)", data=port_bytes,
+                   file_name="rapor_portable.xlsx",
                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+# 2) Şablona yaz (rapor.xlsx yapısı korunur — tablo aralıkları güncellenir)
+if tpl_file:
+    try:
+        tpl_bytes = tpl_file.read()
+        out_bytes = write_into_template(tpl_bytes, fonk_df, up_df)
+        st.download_button("⬇️ Şablona Yazılmış Excel (rapor yapısı korunur)", data=out_bytes,
+                           file_name="rapor_sablonlu.xlsx",
+                           mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    except Exception as e:
+        st.error(f"Şablona yazılamadı: {e}")
+        st.info("Yedek olarak 'Taşınabilir Excel' dosyasını kullanabilirsiniz.")
+else:
+    st.info("Şablona birebir yazım için rapor.xlsx dosyasını da yükleyin.")
